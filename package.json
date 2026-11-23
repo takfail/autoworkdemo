@@ -1,0 +1,8 @@
+{
+  "name": "aiworker",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "google-auth-library": "^10.5.0"
+  }
+}

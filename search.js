@@ -1,4 +1,5 @@
 const { writeFile } = require("node:fs/promises");
+const { GoogleAuth } = require("google-auth-library");
 
 const SEARCHES = [
   {
@@ -105,6 +106,68 @@ async function runSearch(apiKey, search) {
   return collectResults(pages, search.hkOnly);
 }
 
+async function saveToSpreadsheet(searches) {
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
+  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!spreadsheetId || !keyFile) {
+    throw new Error(
+      "Missing GOOGLE_SPREADSHEET_ID or GOOGLE_APPLICATION_CREDENTIALS. Add both to .env, share the spreadsheet with the service account email, then rerun.",
+    );
+  }
+
+  const auth = new GoogleAuth({
+    keyFile,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  const client = await auth.getClient();
+  const { token } = await client.getAccessToken();
+  if (!token) throw new Error("Google auth did not return an access token.");
+
+  const values = [
+    ["search_id", "query", "rank", "title", "url", "description"],
+  ];
+  for (const search of searches) {
+    for (const result of search.results) {
+      values.push([
+        search.id,
+        search.query,
+        result.rank,
+        result.title,
+        result.url,
+        result.description,
+      ]);
+    }
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values`;
+
+  const clear = await fetch(`${base}/A:F:clear`, { method: "POST", headers });
+  if (!clear.ok) {
+    throw new Error(
+      `Google Sheets clear failed ${clear.status}: ${await clear.text()}`,
+    );
+  }
+
+  const update = await fetch(`${base}/A1?valueInputOption=RAW`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ values }),
+  });
+  if (!update.ok) {
+    throw new Error(
+      `Google Sheets update failed ${update.status}: ${await update.text()}`,
+    );
+  }
+
+  console.log(
+    `Wrote ${values.length - 1} row(s) to spreadsheet ${spreadsheetId}`,
+  );
+}
+
 async function main() {
   const apiKey = process.env.BRAVE_API_KEY;
   if (!apiKey) {
@@ -134,6 +197,7 @@ async function main() {
       "\n",
   );
   console.log("Wrote results.json");
+  await saveToSpreadsheet(searches);
 }
 
 main().catch((error) => {
