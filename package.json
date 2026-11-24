@@ -3,6 +3,7 @@
   "private": true,
   "type": "commonjs",
   "dependencies": {
+    "firecrawl": "^4.54.0",
     "google-auth-library": "^10.5.0"
   }
 }

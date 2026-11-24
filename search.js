@@ -124,7 +124,16 @@ async function saveToSpreadsheet(searches) {
   if (!token) throw new Error("Google auth did not return an access token.");
 
   const values = [
-    ["search_id", "query", "rank", "title", "url", "description"],
+    [
+      "search_id",
+      "query",
+      "rank",
+      "title",
+      "url",
+      "description",
+      "company_name",
+      "contact_email",
+    ],
   ];
   for (const search of searches) {
     for (const result of search.results) {
@@ -135,6 +144,8 @@ async function saveToSpreadsheet(searches) {
         result.title,
         result.url,
         result.description,
+        "",
+        "",
       ]);
     }
   }
@@ -145,7 +156,7 @@ async function saveToSpreadsheet(searches) {
   };
   const base = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values`;
 
-  const clear = await fetch(`${base}/A:F:clear`, { method: "POST", headers });
+  const clear = await fetch(`${base}/A:H:clear`, { method: "POST", headers });
   if (!clear.ok) {
     throw new Error(
       `Google Sheets clear failed ${clear.status}: ${await clear.text()}`,
